@@ -1,0 +1,26 @@
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Project specifics
+*.mp4
+*.ts
+*.mkv
+playwright_data/
+
+# PyInstaller / Build
+build/
+dist/
+*.spec
+version.py
