@@ -26,22 +26,23 @@ class WebSniffer:
                 context = p.chromium.launch_persistent_context(
                     user_data_dir=user_data_dir,
                     headless=False,
-                    args=["--disable-blink-features=AutomationControlled"]
+                    args=["--disable-blink-features=AutomationControlled", "--start-maximized"],
+                    no_viewport=True
                 )
                 
-                page = context.new_page()
+                # Use the default page if it exists, otherwise create a new one
+                page = context.pages[0] if context.pages else context.new_page()
                 page.goto("https://google.com") # Open a default page
                 
-                found_m3u8 = False
+                captured_urls = set()
 
                 def handle_request(request):
-                    nonlocal found_m3u8
-                    if found_m3u8:
-                        return
-                        
                     # Broad check for m3u8 streams
                     if ".m3u8" in request.url.lower():
-                        found_m3u8 = True
+                        base_url = request.url.split('?')[0]
+                        if base_url in captured_urls:
+                            return
+                        captured_urls.add(base_url)
                         
                         m3u8_url = request.url
                         referer = request.headers.get("referer", "")
@@ -74,6 +75,10 @@ class WebSniffer:
                         break # Browser was closed by user
                 
                 context.close()
+                
+            # Loop broke cleanly (e.g. user closed tab) -> Re-enable GUI button
+            if self.on_error_callback:
+                self.on_error_callback(Exception("Browser closed by user"))
                 
         except Exception as e:
             if self.on_error_callback:

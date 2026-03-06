@@ -36,11 +36,12 @@ class M3U8Downloader:
             download_dir = output_path
             
         ydl_opts = {
-            'format': 'bestvideo+bestaudio/best',
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
             'outtmpl': os.path.join(download_dir, filename_template),
             'merge_output_format': 'mp4',
             'quiet': True,
             'no_warnings': True,
+            'overwrites': True,
             'progress_hooks': [self._internal_hook],
         }
 
