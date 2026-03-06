@@ -37,9 +37,19 @@ class WebSniffer:
                 captured_urls = set()
 
                 def handle_request(request):
-                    # Broad check for m3u8 streams
-                    if ".m3u8" in request.url.lower():
-                        base_url = request.url.split('?')[0]
+                    url_lower = request.url.lower()
+                    
+                    # Broad check for streams and popular iframe players
+                    is_target = False
+                    if ".m3u8" in url_lower or ".mpd" in url_lower:
+                        is_target = True
+                    elif "iframe.mediadelivery.net/embed/" in url_lower:
+                        is_target = True
+                    elif "player.vimeo.com/video/" in url_lower:
+                        is_target = True
+                        
+                    if is_target:
+                        base_url = request.url.split('?')[0] if not "mediadelivery" in url_lower else request.url
                         if base_url in captured_urls:
                             return
                         captured_urls.add(base_url)
@@ -63,6 +73,9 @@ class WebSniffer:
                 page.on("request", handle_request)
                 
                 # Keep browser open until user closes it
+                scan_counter = 0
+                import re
+                
                 while not self._stop_event.is_set():
                     try:
                         # This throws an error if user manually closes the browser window
@@ -71,6 +84,25 @@ class WebSniffer:
                         # Extra check: if page is closed, break
                         if page.is_closed():
                             break
+                            
+                        # Advanced DOM Scanner: Poll frames for hidden M3U8 links every ~2 seconds
+                        scan_counter += 1
+                        if scan_counter % 4 == 0:
+                            for frame in page.frames:
+                                try:
+                                    content = frame.content()
+                                    matches = re.findall(r'(https?://[^\s"\'<>*^!;#]+\.m3u8[^\s"\'<>*^!;#]*)', content)
+                                    for link in matches:
+                                        base_link = link.split('?')[0]
+                                        if base_link not in captured_urls:
+                                            captured_urls.add(base_link)
+                                            try: title = page.title()
+                                            except: title = "Captured_Video_DOM"
+                                            
+                                            if self.on_found_callback:
+                                                self.on_found_callback(link, "", "", title)
+                                except Exception:
+                                    pass
                     except Exception:
                         break # Browser was closed by user
                 
